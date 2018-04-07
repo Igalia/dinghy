@@ -101,6 +101,13 @@ make_action (const char *name, void (*callback) (DyLauncher*))
     return action;
 }
 
+static void
+on_initialize_web_extensions (WebKitWebContext *context,
+                              void             *user_data)
+{
+    webkit_web_context_set_web_extensions_directory (context, PKGLIBDIR);
+}
+
 
 typedef struct _RequestHandlerMapEntry RequestHandlerMapEntry;
 static void request_handler_map_entry_register (const char*, RequestHandlerMapEntry*, WebKitWebContext*);
@@ -132,6 +139,9 @@ dy_launcher_create_web_context (DyLauncher *launcher)
                               (GHFunc) request_handler_map_entry_register,
                               launcher->web_context);
     }
+
+    g_signal_connect (launcher->web_context, "initialize-web-extensions",
+                      G_CALLBACK (on_initialize_web_extensions), NULL);
 }
 
 

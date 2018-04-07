@@ -3,7 +3,7 @@ Architecture
 
 This document contains an overview description of Dinghy's architecture.
 
-From the point of view “what gets built”, Dinghy is split in three components:
+From the point of view “what gets built”, Dinghy is split in four components:
 
 - `dinghy`: The launcher itself. Built from [dinghy.c](dinghy.c), uses
   `libdinghycore`.
@@ -17,7 +17,10 @@ From the point of view “what gets built”, Dinghy is split in three component
 - `libdinghycore`: Library which contains most of the functionality used to
   implement the launcher, in reusable form.
 
-Most of the items described below are built as part of the latter.
+- `dinghy-web-extension`: The web process extension (InjectedBundle) to be
+  dlopened by the web process.
+
+Most of the items described below are built as part of `libdinghycore`.
 
 
 DyLauncher
