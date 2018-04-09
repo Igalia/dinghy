@@ -31,6 +31,7 @@ endif()
 
 add_definitions(-DDY_INSIDE_DINGHY__=1)
 add_definitions(-DG_LOG_DOMAIN=\"Dy\")
+add_definitions(-DPKGLIBDIR="${CMAKE_INSTALL_FULL_LIBDIR}/dinghy")
 
 configure_file(dy-config.h.in dy-config.h @ONLY)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
@@ -60,8 +61,10 @@ pkg_check_modules(SOUP REQUIRED libsoup-2.4)
 if (DY_USE_WEBKITGTK)
 	list(APPEND DINGHYCORE_SOURCES dy-gtk-utils.c)
 	pkg_check_modules(WEB_ENGINE REQUIRED webkit2gtk-4.0)
+	pkg_check_modules(WEB_EXTENSION REQUIRED webkit2gtk-4.0-web-extension)
 else ()
 	pkg_check_modules(WEB_ENGINE REQUIRED wpe-webkit wpe)
+	pkg_check_modules(WEB_EXTENSION REQUIRED wpe-web-extension)
 endif ()
 
 set(DINGHYCORE_INCLUDE_DIRS ${WEB_ENGINE_INCLUDE_DIRS} ${SOUP_INCLUDE_DIRS})
@@ -96,6 +99,11 @@ set_property(TARGET dinghycore PROPERTY C_STANDARD 99)
 target_include_directories(dinghycore PUBLIC ${DINGHYCORE_INCLUDE_DIRS})
 target_link_libraries(dinghycore ${DINGHYCORE_LDFLAGS})
 
+add_library(dinghywebextension MODULE dy-web-extension.c)
+set_property(TARGET dinghywebextension PROPERTY C_STANDARD 99)
+target_include_directories(dinghywebextension PRIVATE ${WEB_EXTENSION_INCLUDE_DIRS})
+target_link_libraries(dinghywebextension ${WEB_EXTENSION_LDFLAGS})
+
 add_executable(dinghy dinghy.c)
 set_property(TARGET dinghy PROPERTY C_STANDARD 99)
 target_link_libraries(dinghy dinghycore)
@@ -112,6 +120,10 @@ install(TARGETS dinghy dinghyctl
 install(TARGETS dinghycore
 	DESTINATION ${CMAKE_INSTALL_LIBDIR}
 	COMPONENT ${DINGHYCORE_COMPONENT}
+)
+install(TARGETS dinghywebextension
+	DESTINATION ${CMAKE_INSTALL_LIBDIR}/dinghy
+	COMPONENT "runtime"
 )
 install(FILES ${DINGHYCORE_API_HEADERS}
 	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dinghy
