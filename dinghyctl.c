@@ -132,7 +132,14 @@ cmd_generic_no_args (const char               *name,
 
     g_autoptr(GError) error = NULL;
     if (!call_method (GTK_ACTIONS_ACTIVATE, params, &error)) {
-        g_printerr ("%s\n", error->message);
+        if (g_error_matches (error,
+                             G_DBUS_ERROR,
+                             G_DBUS_ERROR_NAME_HAS_NO_OWNER)) {
+            g_printerr ("Name %s not available. Please make sure"
+                        " Dinghy is running.\n", s_options.appid);
+        } else {
+            g_printerr ("%s\n", error->message);
+        }
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
@@ -184,7 +191,14 @@ cmd_open (const char               *name,
     GVariant *params = g_variant_new ("(sava{sv})", "open", param_uri, NULL);
 
     if (!call_method (GTK_ACTIONS_ACTIVATE, params, &error)) {
-        g_printerr ("%s\n", error->message);
+        if (g_error_matches (error,
+                             G_DBUS_ERROR,
+                             G_DBUS_ERROR_NAME_HAS_NO_OWNER)) {
+            g_printerr ("Name %s not available. Please make sure"
+                        " Dinghy is running.\n", s_options.appid);
+        } else {
+            g_printerr ("%s\n", error->message);
+        }
         return EXIT_FAILURE;
     }
     return EXIT_SUCCESS;
