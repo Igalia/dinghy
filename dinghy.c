@@ -26,6 +26,7 @@ static struct {
     gboolean dev_tools;
     gboolean webgl;
     gboolean log_console;
+    gboolean file_uri_strict;
     gdouble  scale_factor;
     GStrv    dir_handlers;
     GStrv    arguments;
@@ -68,6 +69,9 @@ static GOptionEntry s_cli_options[] =
         "Document viewer mode: optimizes for local loading of Web content. "
         "This reduces memory usage at the cost of reducing caching of "
         "resources loaded from the network.",
+        NULL },
+    { "strict-file-uri-checking", '\0', 0, G_OPTION_ARG_NONE, &s_options.file_uri_strict,
+        "Strict checking of request loading from file:// resources.",
         NULL },
     { "dir-handler", 'd', 0, G_OPTION_ARG_STRING_ARRAY, &s_options.dir_handlers,
         "Add a URI scheme handler for a directory",
@@ -315,6 +319,7 @@ on_create_web_view (DyLauncher *launcher,
                                            "enable-page-cache", !s_options.doc_viewer,
                                            "enable-webgl", s_options.webgl,
                                            "enable-write-console-messages-to-stdout", s_options.log_console,
+                                           "allow-universal-access-from-file-urls", !s_options.file_uri_strict,
                                            NULL);
     g_autoptr(WebKitWebView) web_view = g_object_new (WEBKIT_TYPE_WEB_VIEW,
                                                       "settings", settings,
