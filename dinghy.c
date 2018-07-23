@@ -5,6 +5,7 @@
  * Distributed under terms of the MIT license.
  */
 
+#include <glib-unix.h>
 #include <stdlib.h>
 #include <string.h>
 #include "dinghy.h"
@@ -358,14 +359,76 @@ on_create_web_view (DyLauncher *launcher,
 }
 
 
-int
-main (int argc, char *argv[])
+static struct {
+    int retcode;
+    int signum;
+} s_exit_info = { EXIT_SUCCESS, 0 };
+
+
+static gboolean
+on_signal (gpointer ptr)
+{
+    s_exit_info.retcode = EXIT_FAILURE;
+    s_exit_info.signum = GPOINTER_TO_INT (ptr);
+
+    g_message ("Signal %d received, cleaning up before exiting...",
+               s_exit_info.signum);
+
+    GApplication *app = g_application_get_default ();
+    if (app) {
+        g_application_quit (app);
+    } else {
+        g_critical ("Application instance not available?");
+    }
+    return G_SOURCE_REMOVE;
+}
+
+
+static void
+on_startup (GApplication *app G_GNUC_UNUSED)
+{
+    static const int signals[] = {
+        SIGHUP,
+        SIGINT,
+        SIGTERM,
+        SIGUSR1,
+        SIGUSR2,
+    };
+    for (unsigned i = 0; i < G_N_ELEMENTS (signals); i++)
+        g_unix_signal_add (signals[i], (GSourceFunc) on_signal, GINT_TO_POINTER (signals[i]));
+}
+
+
+static int
+app_main (int argc, char *argv[])
 {
     g_autoptr(GApplication) app = G_APPLICATION (dy_launcher_get_default ());
     g_application_add_main_option_entries (app, s_cli_options);
+    g_signal_connect (app, "startup",
+                      G_CALLBACK (on_startup), NULL);
     g_signal_connect (app, "handle-local-options",
                       G_CALLBACK (on_handle_local_options), NULL);
     g_signal_connect (app, "create-web-view",
                       G_CALLBACK (on_create_web_view), NULL);
     return g_application_run (app, argc, argv);
+}
+
+
+int
+main (int argc, char *argv[])
+{
+    int retcode = app_main (argc, argv);
+
+    // If we are exiting due to a signal, at this point cleanup has been
+    // done and the GLib main loop is not running, so re-send the signal
+    // to ourselves in order to exit with the same exit status/signal code
+    // as normally expected.
+    if (s_exit_info.signum) {
+        g_message ("Cleaning up done, re-raising signal %d.",
+                   s_exit_info.signum);
+        raise (s_exit_info.signum);
+        g_assert_not_reached ();
+    }
+
+    return retcode ? retcode : s_exit_info.retcode;
 }
