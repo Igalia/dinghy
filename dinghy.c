@@ -417,16 +417,20 @@ app_main (int argc, char *argv[])
 int
 main (int argc, char *argv[])
 {
+    // Using a new process group the whole group can be signalled at once.
+    setpgrp();
+
     int retcode = app_main (argc, argv);
 
     // If we are exiting due to a signal, at this point cleanup has been
     // done and the GLib main loop is not running, so re-send the signal
-    // to ourselves in order to exit with the same exit status/signal code
-    // as normally expected.
+    // to the process group in order to exit with the exit status/signal
+    // code that would normally be used *and* also kill the subprocesses
+    // (renderer process, network process, and so on).
     if (s_exit_info.signum) {
         g_message ("Cleaning up done, re-raising signal %d.",
                    s_exit_info.signum);
-        raise (s_exit_info.signum);
+        killpg (0, s_exit_info.signum);
         g_assert_not_reached ();
     }
 
