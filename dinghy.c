@@ -28,6 +28,7 @@ static struct {
     gboolean webgl;
     gboolean log_console;
     gboolean file_uri_strict;
+    gboolean automation_mode;
     gdouble  scale_factor;
     GStrv    dir_handlers;
     GStrv    arguments;
@@ -73,6 +74,9 @@ static GOptionEntry s_cli_options[] =
         NULL },
     { "strict-file-uri-checking", '\0', 0, G_OPTION_ARG_NONE, &s_options.file_uri_strict,
         "Strict checking of request loading from file:// resources.",
+        NULL },
+    { "automation-mode", '\0', G_OPTION_FLAG_HIDDEN, G_OPTION_ARG_NONE, &s_options.automation_mode,
+        "Run in WebDriver automation mode.",
         NULL },
     { "dir-handler", 'd', 0, G_OPTION_ARG_STRING_ARRAY, &s_options.dir_handlers,
         "Add a URI scheme handler for a directory",
@@ -212,16 +216,20 @@ on_handle_local_options (GApplication *application,
     }
 
     const char *uri = NULL;
-    if (!s_options.arguments) {
-        if (!(uri = g_getenv ("DINGHY_URL"))) {
-            g_printerr ("%s: URL not passed in the command line, and DINGHY_URL not set\n", g_get_prgname ());
-            return EXIT_FAILURE;
-        }
-    } else if (g_strv_length (s_options.arguments) > 1) {
-        g_printerr ("%s: Cannot load more than one URL.\n", g_get_prgname ());
-        return EXIT_FAILURE;
+    if (s_options.automation_mode) {
+        uri = "about:blank";
     } else {
-        uri = s_options.arguments[0];
+        if (!s_options.arguments) {
+            if (!(uri = g_getenv ("DINGHY_URL"))) {
+                g_printerr ("%s: URL not passed in the command line, and DINGHY_URL not set\n", g_get_prgname ());
+                return EXIT_FAILURE;
+            }
+        } else if (g_strv_length (s_options.arguments) > 1) {
+            g_printerr ("%s: Cannot load more than one URL.\n", g_get_prgname ());
+            return EXIT_FAILURE;
+        } else {
+            uri = s_options.arguments[0];
+        }
     }
 
     g_autoptr(GError) error = NULL;
@@ -274,6 +282,9 @@ on_handle_local_options (GApplication *application,
                                          handler);
     }
 
+    if (s_options.automation_mode)
+        dy_launcher_enable_automation (DY_LAUNCHER (application));
+
     dy_launcher_set_home_uri (DY_LAUNCHER (application), utf8_uri);
 
 #if DY_USE_MODE_MONITOR
@@ -323,8 +334,9 @@ on_create_web_view (DyLauncher *launcher,
                                            "allow-universal-access-from-file-urls", !s_options.file_uri_strict,
                                            NULL);
     g_autoptr(WebKitWebView) web_view = g_object_new (WEBKIT_TYPE_WEB_VIEW,
-                                                      "settings", settings,
                                                       "web-context", web_context,
+                                                      "settings", settings,
+                                                      "is-controlled-by-automation", s_options.automation_mode,
                                                       "zoom-level", s_options.scale_factor,
                                                       NULL);
 

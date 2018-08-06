@@ -52,6 +52,8 @@ void              dy_launcher_set_request_handler (DyLauncher       *launcher,
                                                    const char       *scheme,
                                                    DyRequestHandler *handler);
 
+void              dy_launcher_enable_automation   (DyLauncher       *launcher);
+
 G_END_DECLS
 
 #endif /* !DY_LAUNCHER_H */

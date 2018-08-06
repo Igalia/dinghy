@@ -20,6 +20,7 @@ struct _DyLauncher {
     WebKitWebContext *web_context;
     WebKitWebView    *web_view;
     char             *home_uri;
+    gboolean          automation_mode;
     GHashTable       *request_handlers;  /* (string, DyRequestHandler) */
 };
 
@@ -106,22 +107,54 @@ typedef struct _RequestHandlerMapEntry RequestHandlerMapEntry;
 static void request_handler_map_entry_register (const char*, RequestHandlerMapEntry*, WebKitWebContext*);
 
 
+static WebKitWebView*
+on_automation_session_create_web_view (WebKitAutomationSession *session,
+                                       DyLauncher              *launcher)
+{
+    return WEBKIT_WEB_VIEW (launcher->web_view);
+}
+
+
+static void
+on_web_context_automation_started (WebKitWebContext        *context,
+                                   WebKitAutomationSession *session,
+                                   DyLauncher              *launcher)
+{
+    g_message ("Automation session started.");
+    g_signal_connect (session, "create-web-view",
+                      G_CALLBACK (on_automation_session_create_web_view),
+                      launcher);
+}
+
+
 static void
 dy_launcher_create_web_context (DyLauncher *launcher)
 {
-    g_autofree char *data_dir = g_build_filename (g_get_user_data_dir (),
-                                                  g_get_prgname (),
-                                                  NULL);
-    g_autofree char *cache_dir = g_build_filename (g_get_user_cache_dir (),
-                                                   g_get_prgname (),
-                                                   NULL);
+    if (launcher->automation_mode) {
+        launcher->web_context = webkit_web_context_new_ephemeral ();
+        webkit_web_context_set_automation_allowed (launcher->web_context, TRUE);
+        g_signal_connect (launcher->web_context, "automation-started",
+                          G_CALLBACK (on_web_context_automation_started),
+                          launcher);
+    } else {
+        g_autofree char *data_dir = g_build_filename (g_get_user_data_dir (),
+                                                      g_get_prgname (),
+                                                      NULL);
+        g_autofree char *cache_dir = g_build_filename (g_get_user_cache_dir (),
+                                                       g_get_prgname (),
+                                                       NULL);
 
-    g_autoptr(WebKitWebsiteDataManager) manager =
-        webkit_website_data_manager_new ("base-data-directory", data_dir,
-                                         "base-cache-directory", cache_dir,
-                                         NULL);
+        g_autoptr(WebKitWebsiteDataManager) manager =
+            webkit_website_data_manager_new ("base-data-directory", data_dir,
+                                             "base-cache-directory", cache_dir,
+                                             NULL);
+        launcher->web_context = webkit_web_context_new_with_website_data_manager (manager);
+    }
 
-    launcher->web_context = webkit_web_context_new_with_website_data_manager (manager);
+    g_debug ("Created Web context @ %p (ephemeral: %s, automation: %s)",
+             launcher->web_context,
+             webkit_web_context_is_ephemeral (launcher->web_context) ? "yes" : "no",
+             webkit_web_context_is_automation_allowed (launcher->web_context) ? "yes" : "no");
 
     /*
      * Request handlers can be registered with DyLauncher before the web
@@ -150,6 +183,15 @@ dy_launcher_open (GApplication *application,
     dy_launcher_set_home_uri (DY_LAUNCHER (application), home_uri);
 }
 
+
+static void
+on_web_view_close (WebKitWebView *web_view,
+                   DyLauncher    *launcher)
+{
+    g_application_quit (G_APPLICATION (launcher));
+}
+
+
 static void
 dy_launcher_startup (GApplication *application)
 {
@@ -170,9 +212,16 @@ dy_launcher_startup (GApplication *application)
         g_autoptr(WebKitSettings) settings =
             webkit_settings_new_with_settings ("enable-developer-extras", TRUE, NULL);
         launcher->web_view = WEBKIT_WEB_VIEW (g_object_new (WEBKIT_TYPE_WEB_VIEW,
-                                                            "settings", settings,
                                                             "web-context", dy_launcher_get_web_context (launcher),
+                                                            "settings", settings,
+                                                            "is-controlled-by-automation", launcher->automation_mode,
                                                             NULL));
+    }
+
+    if (launcher->automation_mode) {
+        g_signal_connect (launcher->web_view, "close",
+                          G_CALLBACK (on_web_view_close),
+                          launcher);
     }
 
     /*
@@ -561,4 +610,12 @@ dy_launcher_set_request_handler (DyLauncher       *launcher,
     }
 
     request_handler_map_entry_register (scheme, entry, launcher->web_context);
+}
+
+
+void
+dy_launcher_enable_automation (DyLauncher *launcher)
+{
+    g_return_if_fail (DY_IS_LAUNCHER (launcher));
+    launcher->automation_mode = TRUE;
 }
