@@ -319,6 +319,19 @@ static WebKitWebView*
 on_create_web_view (DyLauncher *launcher,
                     void       *user_data)
 {
+    struct wpe_view_backend *wpe_view_backend = wpe_view_backend_create ();
+    if (!wpe_view_backend) {
+        g_error ("Cannot instantiate WPE view backend.\n");
+        return NULL;
+    }
+
+    WebKitWebViewBackend *view_backend =
+        webkit_web_view_backend_new (wpe_view_backend, NULL, NULL);
+    if (!view_backend) {
+        g_error ("Cannot instantiate WPE WebKit view backend.\n");
+        return NULL;
+    }
+
     WebKitWebContext *web_context = dy_launcher_get_web_context (launcher);
 
     if (s_options.doc_viewer) {
@@ -334,10 +347,11 @@ on_create_web_view (DyLauncher *launcher,
                                            "allow-universal-access-from-file-urls", !s_options.file_uri_strict,
                                            NULL);
     g_autoptr(WebKitWebView) web_view = g_object_new (WEBKIT_TYPE_WEB_VIEW,
-                                                      "web-context", web_context,
                                                       "settings", settings,
+                                                      "web-context", web_context,
                                                       "is-controlled-by-automation", s_options.automation_mode,
                                                       "zoom-level", s_options.scale_factor,
+                                                      "backend", view_backend,
                                                       NULL);
 
 
