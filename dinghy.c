@@ -319,6 +319,7 @@ static WebKitWebView*
 on_create_web_view (DyLauncher *launcher,
                     void       *user_data)
 {
+#if !DY_USE_WEBKITGTK
     struct wpe_view_backend *wpe_view_backend = wpe_view_backend_create ();
     if (!wpe_view_backend) {
         g_error ("Cannot instantiate WPE view backend.\n");
@@ -331,6 +332,7 @@ on_create_web_view (DyLauncher *launcher,
         g_error ("Cannot instantiate WPE WebKit view backend.\n");
         return NULL;
     }
+#endif
 
     WebKitWebContext *web_context = dy_launcher_get_web_context (launcher);
 
@@ -351,7 +353,9 @@ on_create_web_view (DyLauncher *launcher,
                                                       "web-context", web_context,
                                                       "is-controlled-by-automation", s_options.automation_mode,
                                                       "zoom-level", s_options.scale_factor,
+#if !DY_USE_WEBKITGTK
                                                       "backend", view_backend,
+#endif
                                                       NULL);
 
 
