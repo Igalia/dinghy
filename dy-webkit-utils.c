@@ -16,7 +16,7 @@ static const char error_message_template[] =
     "h3 { font-weight: 600; color: #fffafa; background: #555;\n"
     "     border-radius: 3px; padding: 0.15em 0.5em; margin-bottom: 0.25em }\n"
     "p { margin-left: 0.5em; margin-right: 0.5em }\n"
-    "p.uri { size: 70%; font-family: monospace; color: #888;\n"
+    "p.uri { size: 70%%; font-family: monospace; color: #888;\n"
     "        margin-left: 0.75em; margin-top: 0 }\n"
     "</style></head><body>\n"
     "  <h3>%s</h3>\n"
