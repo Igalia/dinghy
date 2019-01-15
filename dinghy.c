@@ -444,6 +444,91 @@ app_main (int argc, char *argv[])
 }
 
 
+#ifdef DY_BUNDLED_PREFIX
+static void setup_bundled_prefix (void) __attribute__((constructor));
+
+static void
+setup_bundled_prefix (void)
+{
+    g_message ("Bundle: PREFIX: %s", DY_BUNDLED_PREFIX);
+
+    /*
+     * TODO: Support appending to colon-separated lists (e.g. for
+     *       GST_PLUGIN_PATH_1_0, though works fine without that
+     *       for all the cases we care about for now).
+     */
+    static const struct {
+        const char *env;
+        union {
+            const char *path;
+            const char *val;
+        };
+        GFileTest test;
+        gboolean if_undefined;
+    } env_defs[] = {
+        {
+            .env  = "FONTCONFIG_FILE",
+            .path = DY_BUNDLED_PREFIX "/etc/fonts.conf",
+            .test = G_FILE_TEST_IS_REGULAR,
+        },
+        {
+            .env  = "GIO_MODULE_DIR",
+            .path = DY_BUNDLED_PREFIX "/lib/gio/modules",
+            .test = G_FILE_TEST_IS_DIR,
+        },
+        {
+            .env  = "GIO_USE_VFS",
+            .val  = "local",
+            .if_undefined = TRUE,
+        },
+        {
+            .env  = "GIO_USE_VOLUME_MONITOR",
+            .val  = "unix",
+            .if_undefined = TRUE,
+        },
+        {
+            .env  = "GST_PLUGIN_PATH_1_0",
+            .path = DY_BUNDLED_PREFIX "/lib/gstreamer-1.0",
+            .test = G_FILE_TEST_IS_DIR,
+        },
+        {
+            .env  = "GST_PLUGIN_SCANNER",
+            .path = DY_BUNDLED_PREFIX "/bin/gst-plugin-scanner",
+            .test = G_FILE_TEST_IS_EXECUTABLE,
+        },
+        {
+            .env  = "GVFS_DISABLE_FUSE",
+            .val  = "1",
+            .if_undefined = TRUE,
+        },
+        {
+            .env  = "XDG_DATA_HOME",
+            .path = DY_BUNDLED_PREFIX "/share",
+            .test = G_FILE_TEST_IS_DIR,
+        },
+        {
+            .env  = "XDG_RUNTIME_DIR",
+            .path = "/tmp",
+            .test = G_FILE_TEST_EXISTS,
+            .if_undefined = TRUE,
+        },
+    };
+
+    for (unsigned i = 0; i < G_N_ELEMENTS (env_defs); i++) {
+        if (env_defs[i].test) {
+            if (g_file_test (env_defs[i].path, G_FILE_TEST_EXISTS | env_defs[i].test)) {
+                g_message ("Bundle: %s: %s", env_defs[i].env, env_defs[i].path);
+                g_setenv (env_defs[i].env, env_defs[i].path, !env_defs[i].if_undefined);
+            }
+        } else {
+            g_message ("Bundle: %s: %s", env_defs[i].env, env_defs[i].path);
+            g_setenv (env_defs[i].env, env_defs[i].val, !env_defs[i].if_undefined);
+        }
+    }
+}
+#endif // DY_BUNDLED_PREFIX
+
+
 int
 main (int argc, char *argv[])
 {

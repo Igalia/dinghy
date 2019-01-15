@@ -9,6 +9,7 @@ set(DY_DBUS_OWN_USER "" CACHE STRING
 
 option(DY_USE_WEBKITGTK "Use WebKitGTK+ instead of WPEWebKit" OFF)
 option(DY_USE_MODE_MONITOR "Use the SysFS graphics mode monitor" OFF)
+option(DY_BUNDLED_BUILD "Support running from a bundled build in a non-standard prefix" OFF)
 set(DY_USE_DRM_MODE_MONITOR OFF CACHE BOOL "Enable the DRM/KMS graphics mode monitor")
 set(DY_APPID "" CACHE STRING "Default GApplication unique identifier")
 set(DY_HOME_URI "" CACHE STRING "Default home URI")
@@ -35,6 +36,10 @@ endif()
 
 add_definitions(-DDY_INSIDE_DINGHY__=1)
 add_definitions(-DG_LOG_DOMAIN=\"Dy\")
+
+if (DY_BUNDLED_BUILD)
+    add_definitions(-DDY_BUNDLED_PREFIX=\"${CMAKE_INSTALL_PREFIX}\")
+endif ()
 
 configure_file(dy-config.h.in dy-config.h @ONLY)
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
